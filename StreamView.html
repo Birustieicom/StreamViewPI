@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>StreamView | Personalize sua Experiência</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=VT323&display=swap');
+
+:root {
+  --primary: #00e5ff;
+  --bg-corporate: #1a1a1a;
+  --bg-void: #050000;
+  --text-main: #f0f0f0;
+  --error: #ff4444;
+}
+
+* { box-sizing: border-box; transition: background 2s, color 2s, filter 1s; }
+
+body {
+  margin: 0; padding: 0;
+  background-color: var(--bg-corporate);
+  color: var(--text-main);
+  font-family: 'Inter', sans-serif;
+  overflow: hidden; height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+}
+
+#vhs-overlay {
+  position: fixed; inset: 0; pointer-events: none; z-index: 1000;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), 
+              linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+  background-size: 100% 3px, 2px 100%; opacity: 0;
+}
+
+.app-container {
+  width: min(900px, 95vw); background: #252525;
+  border-radius: 8px; overflow: hidden;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+  position: relative; border: 1px solid #333;
+}
+
+.header { background: #111; padding: 20px 40px; display: flex; align-items: center; border-bottom: 2px solid var(--primary); }
+.logo { font-weight: 700; font-size: 1.5rem; letter-spacing: 2px; color: var(--primary); }
+
+.content { padding: 40px; min-height: 450px; }
+h2 { margin-top: 0; font-size: 1.8rem; }
+p { color: #aaa; line-height: 1.6; }
+
+.form-group { margin-bottom: 25px; }
+label { display: block; margin-bottom: 10px; font-weight: bold; font-size: 0.9rem; color: #888; }
+
+input, textarea, select {
+  width: 100%; padding: 15px; background: #1a1a1a;
+  border: 1px solid #333; color: #fff; border-radius: 4px; font-size: 1rem;
+}
+
+.footer-actions { padding: 20px 40px; background: #111; display: flex; justify-content: space-between; }
+button { padding: 12px 30px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; font-family: inherit; }
+.btn-next { background: var(--primary); color: #000; }
+.btn-back { background: transparent; color: #666; }
+
+.glitch-active { animation: shake 0.1s infinite; font-family: 'VT323', monospace !important; }
+@keyframes shake {
+  0% { transform: translate(1px, 1px) rotate(0deg); }
+  25% { transform: translate(-2px, -1px) rotate(0.5deg); }
+  50% { transform: translate(1px, 2px) rotate(-0.5deg); }
+  100% { transform: translate(-1px, -2px) rotate(0deg); }
+}
+
+.terminal-text { color: #0f0; text-shadow: 0 0 5px #0f0; font-size: 1.5rem; }
+</style>
+</head>
+<body>
+
+<div id="vhs-overlay"></div>
+
+<div class="app-container" id="main-app">
+  <div class="header" id="header">
+    <div class="logo" id="logo-text">STREAMVIEW</div>
+  </div>
+  <div class="content">
+    <div id="step-content"></div>
+  </div>
+  <div class="footer-actions">
+    <button class="btn-back" onclick="handleBack()">VOLTAR</button>
+    <button class="btn-next" onclick="handleNext()">CONTINUAR</button>
+  </div>
+</div>
+
+<script>
+let currentStep = 0;
+let score = 0;
+let userData = { name: "", choice: "" };
+
+const steps = [
+  // --- 15 PERGUNTAS NORMAIS ---
+  { t: "Bem-vindo", d: "Como devemos chamá-lo?", h: `<input type="text" id="un" placeholder="Nome">`, x: 0 },
+  { t: "Idade", d: "Qual sua faixa etária?", h: `<select><option>18-25</option><option>26-40</option><option>40+</option></select>`, x: 0 },
+  { t: "Gênero", d: "Qual categoria você mais assiste?", h: `<select><option>Terror</option><option>Comédia</option><option>Ação</option><option>Documentário</option><option>Drama</option></select>`, x: 0 },
+  { t: "Frequência", d: "Quantas horas por dia você assiste vídeos?", h: `<input type="number" placeholder="Horas">`, x: 0 },
+  { t: "Dispositivo", d: "Qual seu dispositivo principal?", h: `<input type="text" placeholder="Ex: PC, Celular">`, x: 0 },
+  { t: "Idioma", d: "Qual seu idioma de preferência?", h: `<select id="uc"><option value="light">Português</option><option>Inglês</option><option>Espanhol</option><option>Francês</option><option>Alemão</option><option value="dark">Outro</option></select>`, x: 0 },
+  { t: "Internet", d: "Sua conexão é estável?", h: `<select><option>Sim</option><option>Não</option></select>`, x: 0 },
+  { t: "Resolução", d: "Prefere 4K ou 1080p?", h: `<select><option>4K</option><option>1080p</option></select>`, x: 0 },
+  { t: "Subtitles", d: "Usa legendas?", h: `<select><option>Sim</option><option>Não</option></select>`, x: 0 },
+  { t: "Som", d: "Usa fones de ouvido?", h: `<select><option>Sim</option><option>Não</option></select>`, x: 0 },
+  { t: "Ambiente", d: "Assiste na cama ou no sofá?", h: `<select><option>Cama</option><option>Sofá</option></select>`, x: 0 },
+  { t: "Notificações", d: "Podemos enviar avisos?", h: `<select><option>Sim</option><option>Não</option></select>`, x: 0 },
+  { t: "Perfil", d: "Cria perfis para outras pessoas?", h: `<select><option>Sim</option><option>Não</option></select>`, x: 0 },
+  { t: "Download", d: "Costuma baixar vídeos?", h: `<select><option>Sim</option><option>Não</option></select>`, x: 0 },
+  { t: "Anúncios", d: "Aceita anúncios personalizados?", h: `<select><option>Sim</option><option>Não</option></select>`, x: 0 },
+
+  // --- 10 PERGUNTAS ESTRANHAS ---
+  { t: "Privacidade", d: "Você se sente observado agora?", h: `<select><option>Não</option><option>Talvez</option></select>`, x: 1 },
+  { t: "Sombras", d: "A sombra atrás de você pareceu se mexer?", h: `<select><option>Sim</option><option>Não</option></select>`, x: 1 },
+  { t: "Reflexo", d: "Seu rosto no monitor parece o mesmo de hoje cedo?", h: `<textarea></textarea>`, x: 2 },
+  { t: "Janelas", d: "Suas cortinas estão fechadas?", h: `<select><option>Sim</option><option>Não</option></select>`, x: 1 },
+  { t: "Respiração", d: "Consegue ouvir alguém respirando no quarto?", h: `<select><option>Apenas eu</option><option>Não sei</option></select>`, x: 2 },
+  { t: "Isolamento", d: "Se você gritasse, alguém ouviria?", h: `<select><option>Sim</option><option>Não</option></select>`, x: 2 },
+  { t: "Tipo Sanguíneo", d: "Qual seu tipo sanguíneo?", h: `<input type="text" placeholder="Ex: O+">`, x: 2 },
+  { t: "Duração", d: "Quanto tempo você aguenta sem piscar?", h: `<input type="text">`, x: 1 },
+  { t: "Memória", d: "Qual a última coisa que você esqueceu hoje?", h: `<textarea></textarea>`, x: 2 },
+  { t: "Portas", d: "A porta atrás de você está trancada?", h: `<select><option>Sim</option><option>Não</option></select>`, x: 2 },
+
+  // --- 5 PERGUNTAS HORRIPILANTES ---
+  { t: "Apetite", d: "Você gosta de sangue?", h: `<select><option>Não</option><option>O gosto é familiar</option></select>`, x: 3 },
+  { t: "Fome", d: "Sua carne é gostosa?", h: `<select><option>SIM</option><option>SIM</option><option>SIM</option></select>`, x: 0 },
+  { t: "Substituição", d: "Se algo tomasse seu lugar agora, alguém notaria?", h: `<textarea></textarea>`, x: 3 },
+  { t: "Dor", d: "Qual parte do seu corpo você menos sentiria falta?", h: `<input type="text">`, x: 3 },
+  { t: "O Intruso", d: "Por que você não olhou para baixo da mesa ainda?", h: `<p class="terminal-text">ESTAMOS ESPERANDO.</p>`, x: 3 },
+  { t: "C0NTR4T0", d: "V0CÊ 4C31T4 S3R N0SS0 C0NT3ÚD0?", h: `<select><option>S1M</option><option>NÃ0 HÁ 3SC0LH4</option></select>`, x: 3 }
+];
+
+function renderStep() {
+  const s = steps[currentStep];
+  const container = document.getElementById("step-content");
+  container.innerHTML = `<h2>${s.t}</h2><p>${s.d}</p>${s.h}`;
+
+  if(s.x >= 1) document.getElementById("vhs-overlay").style.opacity = "0.3";
+  if(s.x >= 2) {
+    document.body.style.backgroundColor = "var(--bg-void)";
+    document.getElementById("main-app").style.borderColor = "var(--error)";
+    document.getElementById("logo-text").style.color = "var(--error)";
+    document.getElementById("logo-text").innerText = "EYE-VIEW";
+  }
+  if(s.x >= 3) {
+    document.getElementById("main-app").classList.add("glitch-active");
+    document.body.style.filter = "grayscale(100%) contrast(150%)";
+  }
+}
+
+function handleNext() {
+  if(currentStep === 0) userData.name = document.getElementById("un")?.value || "Vítima";
+  if(currentStep === 5) userData.choice = document.getElementById("uc")?.value;
+  
+  if(userData.choice === "dark") score += 2; else score += 1;
+
+  currentStep++;
+  if(currentStep < steps.length) renderStep(); else triggerFinal();
+}
+
+function handleBack() {
+  alert("AVISO: Tentar voltar apaga partes da sua memória recente. Deseja continuar?");
+  currentStep++; renderStep();
+}
+
+function triggerFinal() {
+  const app = document.getElementById("main-app");
+  app.innerHTML = ""; document.body.style.backgroundColor = "#000";
+  let fin = "";
+
+  if(score <= 15) {
+    fin = `<div style="color:#fff;text-align:center;padding:50px;"><h1>FINAL: O ASSINANTE</h1><p>${userData.name}, olhe para a sua janela.</p></div>`;
+  } else if(score > 15 && score < 25) {
+    fin = `<div style="color:#f00;text-align:center;padding:50px;font-family:'VT323';"><h1>FINAL: FONTE DE DADOS</h1><p>Seus órgãos foram vendidos para pagar a mensalidade.</p></div>`;
+  } else {
+    fin = `<div style="color:#0f0;padding:20px;font-family:monospace;"><h1>FINAL: ERRO DE REALIDADE</h1><p>VOCÊ NÃO EXISTE MAIS FORA DESTA TELA, ${userData.name}.</p></div>`;
+  }
+
+  document.body.innerHTML = fin;
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = 'square'; osc.frequency.setValueAtTime(30, audioCtx.currentTime); 
+  gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+  osc.connect(gain); gain.connect(audioCtx.destination);
+  osc.start(); setTimeout(() => osc.stop(), 5000);
+}
+
+renderStep();
+</script>
+</body>
+</html>
